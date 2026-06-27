@@ -1,0 +1,5 @@
+{
+  "csv_text": "name,email,phone,company\nAlice,ALICE@Example.COM,(415) 555-0199,Acme\nBob,bad-email,4155550188,Beta\n",
+  "delimiter": ",",
+  "sample_rows": 2
+}

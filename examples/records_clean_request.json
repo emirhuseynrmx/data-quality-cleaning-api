@@ -1,0 +1,27 @@
+{
+  "records": [
+    {
+      "name": "  Alice Carter ",
+      "email": "ALICE@Example.COM ",
+      "phone": "(415) 555-0199",
+      "company": "Acme Inc",
+      "lead_score": "82"
+    },
+    {
+      "name": "Bob Smith",
+      "email": "bad-email",
+      "phone": "415-555-0188",
+      "company": "Beta LLC",
+      "lead_score": ""
+    },
+    {
+      "name": "Alice Carter",
+      "email": "alice@example.com",
+      "phone": "+14155550199",
+      "company": "Acme Inc",
+      "lead_score": "82"
+    }
+  ],
+  "deduplicate_keys": ["email"],
+  "default_phone_region": "US"
+}

@@ -1,0 +1,949 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Data Quality Cleaning API",
+    "description": "RapidAPI-ready data hygiene API for CSV profiling, CSV cleaning, JSON record cleanup, email normalization, phone normalization, and domain parsing.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "type": "object",
+                  "title": "Response Health Health Get"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/email/normalize": {
+      "post": {
+        "summary": "Normalize Emails",
+        "operationId": "normalize_emails_v1_email_normalize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EmailBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/phone/normalize": {
+      "post": {
+        "summary": "Normalize Phones",
+        "operationId": "normalize_phones_v1_phone_normalize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PhoneBatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PhoneBatchResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/domain/parse": {
+      "post": {
+        "summary": "Parse Domain Values",
+        "operationId": "parse_domain_values_v1_domain_parse_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DomainParseRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DomainParseResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/csv/profile": {
+      "post": {
+        "summary": "Profile Csv",
+        "operationId": "profile_csv_v1_csv_profile_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsvProfileRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/csv/clean": {
+      "post": {
+        "summary": "Clean Csv",
+        "operationId": "clean_csv_v1_csv_clean_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CsvCleanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvCleanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/records/clean": {
+      "post": {
+        "summary": "Clean Records",
+        "operationId": "clean_records_v1_records_clean_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordCleanRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecordCleanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ColumnProfile": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "inferred_type": {
+            "type": "string",
+            "enum": [
+              "integer",
+              "number",
+              "boolean",
+              "date",
+              "email",
+              "phone",
+              "text",
+              "empty"
+            ],
+            "title": "Inferred Type"
+          },
+          "missing_count": {
+            "type": "integer",
+            "title": "Missing Count"
+          },
+          "missing_rate": {
+            "type": "number",
+            "title": "Missing Rate"
+          },
+          "unique_count": {
+            "type": "integer",
+            "title": "Unique Count"
+          },
+          "example_values": {
+            "items": {},
+            "type": "array",
+            "title": "Example Values"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name",
+          "inferred_type",
+          "missing_count",
+          "missing_rate",
+          "unique_count",
+          "example_values"
+        ],
+        "title": "ColumnProfile"
+      },
+      "CsvCleanRequest": {
+        "properties": {
+          "csv_text": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 1,
+            "title": "Csv Text"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "sample_rows": {
+            "type": "integer",
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Sample Rows",
+            "default": 5
+          },
+          "trim_strings": {
+            "type": "boolean",
+            "title": "Trim Strings",
+            "default": true
+          },
+          "empty_strings_to_null": {
+            "type": "boolean",
+            "title": "Empty Strings To Null",
+            "default": true
+          },
+          "lowercase_email_fields": {
+            "type": "boolean",
+            "title": "Lowercase Email Fields",
+            "default": true
+          },
+          "deduplicate_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Deduplicate Keys"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "csv_text"
+        ],
+        "title": "CsvCleanRequest"
+      },
+      "CsvCleanResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/DatasetProfile"
+          },
+          "cleaned_csv": {
+            "type": "string",
+            "title": "Cleaned Csv"
+          },
+          "cleaned_records_sample": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cleaned Records Sample"
+          },
+          "duplicates_removed": {
+            "type": "integer",
+            "title": "Duplicates Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "cleaned_csv",
+          "cleaned_records_sample",
+          "duplicates_removed"
+        ],
+        "title": "CsvCleanResponse"
+      },
+      "CsvProfileRequest": {
+        "properties": {
+          "csv_text": {
+            "type": "string",
+            "maxLength": 1000000,
+            "minLength": 1,
+            "title": "Csv Text"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "sample_rows": {
+            "type": "integer",
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Sample Rows",
+            "default": 5
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "csv_text"
+        ],
+        "title": "CsvProfileRequest"
+      },
+      "CsvProfileResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/DatasetProfile"
+          },
+          "sample_records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Sample Records"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "sample_records"
+        ],
+        "title": "CsvProfileResponse"
+      },
+      "DatasetProfile": {
+        "properties": {
+          "rows": {
+            "type": "integer",
+            "title": "Rows"
+          },
+          "columns": {
+            "type": "integer",
+            "title": "Columns"
+          },
+          "duplicate_rows": {
+            "type": "integer",
+            "title": "Duplicate Rows"
+          },
+          "quality_score": {
+            "type": "number",
+            "title": "Quality Score"
+          },
+          "column_profiles": {
+            "items": {
+              "$ref": "#/components/schemas/ColumnProfile"
+            },
+            "type": "array",
+            "title": "Column Profiles"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Warnings"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rows",
+          "columns",
+          "duplicate_rows",
+          "quality_score",
+          "column_profiles",
+          "warnings"
+        ],
+        "title": "DatasetProfile"
+      },
+      "DomainParseRequest": {
+        "properties": {
+          "values": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Values"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "values"
+        ],
+        "title": "DomainParseRequest"
+      },
+      "DomainParseResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/DomainParseResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "results"
+        ],
+        "title": "DomainParseResponse"
+      },
+      "DomainParseResult": {
+        "properties": {
+          "input": {
+            "type": "string",
+            "title": "Input"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "email",
+              "url",
+              "domain",
+              "unknown"
+            ],
+            "title": "Source"
+          },
+          "valid_shape": {
+            "type": "boolean",
+            "title": "Valid Shape"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "domain",
+          "source",
+          "valid_shape"
+        ],
+        "title": "DomainParseResult"
+      },
+      "EmailBatchRequest": {
+        "properties": {
+          "emails": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Emails"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "emails"
+        ],
+        "title": "EmailBatchRequest"
+      },
+      "EmailBatchResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "valid": {
+            "type": "integer",
+            "title": "Valid"
+          },
+          "invalid": {
+            "type": "integer",
+            "title": "Invalid"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/EmailResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "valid",
+          "invalid",
+          "results"
+        ],
+        "title": "EmailBatchResponse"
+      },
+      "EmailResult": {
+        "properties": {
+          "input": {
+            "type": "string",
+            "title": "Input"
+          },
+          "normalized": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalized"
+          },
+          "valid_format": {
+            "type": "boolean",
+            "title": "Valid Format"
+          },
+          "domain": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Domain"
+          },
+          "username": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Username"
+          },
+          "disposable_domain": {
+            "type": "boolean",
+            "title": "Disposable Domain"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "normalized",
+          "valid_format",
+          "domain",
+          "username",
+          "disposable_domain"
+        ],
+        "title": "EmailResult"
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "PhoneBatchRequest": {
+        "properties": {
+          "phones": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 2000,
+            "minItems": 1,
+            "title": "Phones"
+          },
+          "default_region": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Default Region",
+            "default": "US"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "phones"
+        ],
+        "title": "PhoneBatchRequest"
+      },
+      "PhoneBatchResponse": {
+        "properties": {
+          "total": {
+            "type": "integer",
+            "title": "Total"
+          },
+          "valid": {
+            "type": "integer",
+            "title": "Valid"
+          },
+          "invalid": {
+            "type": "integer",
+            "title": "Invalid"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/PhoneResult"
+            },
+            "type": "array",
+            "title": "Results"
+          }
+        },
+        "type": "object",
+        "required": [
+          "total",
+          "valid",
+          "invalid",
+          "results"
+        ],
+        "title": "PhoneBatchResponse"
+      },
+      "PhoneResult": {
+        "properties": {
+          "input": {
+            "type": "string",
+            "title": "Input"
+          },
+          "e164": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "E164"
+          },
+          "national": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "National"
+          },
+          "valid": {
+            "type": "boolean",
+            "title": "Valid"
+          },
+          "country_code": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Country Code"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          }
+        },
+        "type": "object",
+        "required": [
+          "input",
+          "e164",
+          "national",
+          "valid",
+          "country_code"
+        ],
+        "title": "PhoneResult"
+      },
+      "RecordCleanRequest": {
+        "properties": {
+          "records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "maxItems": 5000,
+            "minItems": 1,
+            "title": "Records"
+          },
+          "trim_strings": {
+            "type": "boolean",
+            "title": "Trim Strings",
+            "default": true
+          },
+          "empty_strings_to_null": {
+            "type": "boolean",
+            "title": "Empty Strings To Null",
+            "default": true
+          },
+          "lowercase_email_fields": {
+            "type": "boolean",
+            "title": "Lowercase Email Fields",
+            "default": true
+          },
+          "normalize_phone_fields": {
+            "type": "boolean",
+            "title": "Normalize Phone Fields",
+            "default": true
+          },
+          "default_phone_region": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Default Phone Region",
+            "default": "US"
+          },
+          "deduplicate_keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "maxItems": 10,
+            "title": "Deduplicate Keys"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "records"
+        ],
+        "title": "RecordCleanRequest"
+      },
+      "RecordCleanResponse": {
+        "properties": {
+          "profile": {
+            "$ref": "#/components/schemas/DatasetProfile"
+          },
+          "cleaned_records": {
+            "items": {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            "type": "array",
+            "title": "Cleaned Records"
+          },
+          "duplicates_removed": {
+            "type": "integer",
+            "title": "Duplicates Removed"
+          }
+        },
+        "type": "object",
+        "required": [
+          "profile",
+          "cleaned_records",
+          "duplicates_removed"
+        ],
+        "title": "RecordCleanResponse"
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}
