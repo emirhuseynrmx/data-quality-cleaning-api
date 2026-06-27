@@ -3,9 +3,20 @@
 [![CI](https://github.com/emirhuseynrmx/data-quality-cleaning-api/actions/workflows/ci.yml/badge.svg)](https://github.com/emirhuseynrmx/data-quality-cleaning-api/actions)
 [![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://www.python.org/)
 
-FastAPI service for cleaning and profiling CSV/JSON lead lists before they go into a CRM, spreadsheet, dashboard, lead workflow, or import job.
+A small FastAPI service for cleaning lead-list CSV/JSON data before it is imported into a CRM, spreadsheet, dashboard, or automation workflow.
 
-This is designed as a RapidAPI-style utility: stateless, cheap to run, no LLM cost, no external data provider, no account credentials.
+I built this around a common data problem: lead lists usually arrive with mixed casing, duplicate rows, half-valid emails, inconsistent phone numbers, empty strings, and spreadsheet cells that should not be opened as formulas.
+
+## What It Does
+
+- trims messy string values
+- normalizes email fields
+- normalizes phone fields to E.164 where possible
+- removes duplicates by selected keys
+- profiles CSV/JSON records
+- reports missing values, duplicate counts, inferred types, and confidence
+- flags invalid email and phone values
+- neutralizes risky spreadsheet formula prefixes
 
 ## Endpoints
 
@@ -21,18 +32,7 @@ POST /v1/csv/upload/clean
 POST /v1/records/clean
 ```
 
-## Use Cases
-
-- clean lead lists before CRM import
-- normalize email and phone fields
-- neutralize spreadsheet formula injection patterns
-- profile CSV files before analytics work
-- remove duplicate records by selected keys
-- get missing-value and type summaries
-- flag invalid email/phone values
-- return cleaned CSV from messy user uploads
-
-## Run
+## Run Locally
 
 ```bash
 pip install -e ".[dev]"
@@ -46,12 +46,6 @@ docker build -t data-quality-api .
 docker run --rm -p 8000:8000 data-quality-api
 ```
 
-Export OpenAPI for RapidAPI import:
-
-```bash
-python scripts/export_openapi.py
-```
-
 ## Example
 
 ```bash
@@ -60,48 +54,29 @@ curl -X POST http://localhost:8000/v1/records/clean \
   -d @examples/records_clean_request.json
 ```
 
-Sample output: [examples/records_clean_response.json](examples/records_clean_response.json)
+Example response:
 
-## Response Shape
+[examples/records_clean_response.json](examples/records_clean_response.json)
 
-`/v1/records/clean` returns:
+## OpenAPI
 
-- cleaned records
-- duplicate count
-- row/column count
-- inferred column types
-- type confidence
-- missing-value rates
-- invalid email/phone counts
-- duplicate-key summary
-- quality score
-- warnings
-
-## RapidAPI Positioning
-
-Suggested title:
+FastAPI exposes the schema at:
 
 ```text
-CRM Lead List Cleaning API
+/openapi.json
 ```
 
-Suggested short description:
+To export a copy into the repo:
 
-```text
-Clean lead-list CSV/JSON records, normalize emails and phones, detect duplicates, protect spreadsheet imports, and generate data quality reports.
+```bash
+python scripts/export_openapi.py
 ```
-
-Suggested pricing:
-
-- Basic/free test: 100 requests/month
-- Pro: $19/month, 10k requests
-- Ultra: $49/month, 75k requests
-- Mega: $99/month, 300k requests
 
 ## Limits
 
 - max CSV size: 1 MB
 - max JSON records per request: 5,000
 - max email/phone/domain batch size: 2,000
+- supported Python versions: 3.10, 3.11, 3.12
 
-This API does not verify email inbox deliverability. It validates and normalizes format-level data for import and reporting workflows.
+This project validates and normalizes format-level data. It does not verify whether an email inbox exists, enrich private contact data, or scrape third-party websites.
