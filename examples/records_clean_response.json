@@ -3,7 +3,16 @@
     "rows": 2,
     "columns": 5,
     "duplicate_rows": 0,
-    "quality_score": 94.5,
+    "invalid_email_count": 1,
+    "invalid_phone_count": 0,
+    "duplicate_key_summary": [
+      {
+        "keys": ["email"],
+        "duplicate_records": 2,
+        "duplicate_groups": 1
+      }
+    ],
+    "quality_score": 91.5,
     "column_profiles": [
       {
         "name": "name",
@@ -11,6 +20,8 @@
         "missing_count": 0,
         "missing_rate": 0.0,
         "unique_count": 2,
+        "confidence": 1.0,
+        "invalid_count": 0,
         "example_values": ["Alice Carter", "Bob Smith"]
       },
       {
@@ -19,6 +30,8 @@
         "missing_count": 0,
         "missing_rate": 0.0,
         "unique_count": 2,
+        "confidence": 0.5,
+        "invalid_count": 1,
         "example_values": ["alice@example.com", "bad-email"]
       },
       {
@@ -27,10 +40,15 @@
         "missing_count": 0,
         "missing_rate": 0.0,
         "unique_count": 2,
+        "confidence": 1.0,
+        "invalid_count": 0,
         "example_values": ["+14155550199", "+14155550188"]
       }
     ],
-    "warnings": ["lead_score has 50% missing values."]
+    "warnings": [
+      "email has 1 invalid email values.",
+      "lead_score has 50% missing values."
+    ]
   },
   "cleaned_records": [
     {

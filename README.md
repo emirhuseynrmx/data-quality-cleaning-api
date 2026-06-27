@@ -1,9 +1,9 @@
-# Data Quality Cleaning API
+# CRM Lead List Cleaning API
 
 [![CI](https://github.com/emirhuseynrmx/data-quality-cleaning-api/actions/workflows/ci.yml/badge.svg)](https://github.com/emirhuseynrmx/data-quality-cleaning-api/actions)
 [![Python](https://img.shields.io/badge/python-3.10--3.12-blue)](https://www.python.org/)
 
-FastAPI service for cleaning and profiling small CSV/JSON datasets before they go into a CRM, spreadsheet, dashboard, lead workflow, or import job.
+FastAPI service for cleaning and profiling CSV/JSON lead lists before they go into a CRM, spreadsheet, dashboard, lead workflow, or import job.
 
 This is designed as a RapidAPI-style utility: stateless, cheap to run, no LLM cost, no external data provider, no account credentials.
 
@@ -16,6 +16,8 @@ POST /v1/phone/normalize
 POST /v1/domain/parse
 POST /v1/csv/profile
 POST /v1/csv/clean
+POST /v1/csv/upload/profile
+POST /v1/csv/upload/clean
 POST /v1/records/clean
 ```
 
@@ -23,9 +25,11 @@ POST /v1/records/clean
 
 - clean lead lists before CRM import
 - normalize email and phone fields
+- neutralize spreadsheet formula injection patterns
 - profile CSV files before analytics work
 - remove duplicate records by selected keys
 - get missing-value and type summaries
+- flag invalid email/phone values
 - return cleaned CSV from messy user uploads
 
 ## Run
@@ -66,7 +70,10 @@ Sample output: [examples/records_clean_response.json](examples/records_clean_res
 - duplicate count
 - row/column count
 - inferred column types
+- type confidence
 - missing-value rates
+- invalid email/phone counts
+- duplicate-key summary
 - quality score
 - warnings
 
@@ -75,13 +82,13 @@ Sample output: [examples/records_clean_response.json](examples/records_clean_res
 Suggested title:
 
 ```text
-Data Quality & CSV Cleaning API
+CRM Lead List Cleaning API
 ```
 
 Suggested short description:
 
 ```text
-Clean CSV/JSON records, normalize emails and phones, detect duplicates, infer column types, and generate data quality reports.
+Clean lead-list CSV/JSON records, normalize emails and phones, detect duplicates, protect spreadsheet imports, and generate data quality reports.
 ```
 
 Suggested pricing:

@@ -2,17 +2,17 @@
 
 ## API Name
 
-Data Quality & CSV Cleaning API
+CRM Lead List Cleaning API
 
 ## Tagline
 
-Clean CSV/JSON records, normalize emails and phones, detect duplicates, infer column types, and generate data quality reports.
+Clean lead-list CSV/JSON records, normalize emails and phones, detect duplicates, protect spreadsheet imports, and generate data quality reports.
 
 ## Long Description
 
-This API helps developers clean small business datasets before CRM imports, spreadsheet workflows, dashboards, lead routing, and analytics jobs.
+This API helps developers clean small business lead lists before CRM imports, spreadsheet workflows, dashboards, lead routing, and analytics jobs.
 
-It accepts CSV text or JSON records and returns cleaned records, duplicate counts, inferred column types, missing-value rates, warnings, and a quality score.
+It accepts CSV text, CSV uploads, or JSON records and returns cleaned records, duplicate counts, inferred column types with confidence, invalid email/phone counts, missing-value rates, warnings, and a quality score.
 
 It is built for practical data hygiene, not enrichment. It does not scrape third-party sites, does not require account credentials, and does not call an LLM.
 
@@ -23,6 +23,8 @@ It is built for practical data hygiene, not enrichment. It does not scrape third
 - `POST /v1/domain/parse`
 - `POST /v1/csv/profile`
 - `POST /v1/csv/clean`
+- `POST /v1/csv/upload/profile`
+- `POST /v1/csv/upload/clean`
 - `POST /v1/records/clean`
 
 ## Best Customers

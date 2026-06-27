@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "data-quality-cleaning-api"
 version = "0.1.0"
-description = "RapidAPI-ready FastAPI service for CSV, JSON, email, phone, and lead-list data quality checks."
+description = "RapidAPI-ready FastAPI service for CRM lead-list cleaning and data quality checks."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
 license = { text = "MIT" }
@@ -16,6 +16,7 @@ dependencies = [
     "pandas>=2.1",
     "phonenumbers>=8.13",
     "pydantic>=2.6",
+    "python-multipart>=0.0.9",
     "python-dateutil>=2.9",
     "uvicorn[standard]>=0.30",
 ]

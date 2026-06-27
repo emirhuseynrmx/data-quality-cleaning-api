@@ -9,25 +9,32 @@ from data_quality_api.email_tools import looks_like_email_column, normalize_emai
 from data_quality_api.models import (
     CsvCleanRequest,
     CsvCleanResponse,
+    DuplicateKeySummary,
     RecordCleanRequest,
     RecordCleanResponse,
 )
 from data_quality_api.phone_tools import looks_like_phone_column, normalize_phone
-from data_quality_api.profiling import profile_frame, read_csv_text, records_to_frame
+from data_quality_api.profiling import (
+    profile_frame,
+    read_csv_text,
+    records_to_frame,
+    summarize_duplicate_keys,
+)
 
 
 def clean_csv_request(request: CsvCleanRequest) -> CsvCleanResponse:
     frame = read_csv_text(request.csv_text, request.delimiter)
-    cleaned, duplicates_removed = clean_frame(
+    cleaned, duplicates_removed, duplicate_summary = clean_frame(
         frame,
         deduplicate_keys=request.deduplicate_keys,
         trim_strings=request.trim_strings,
         empty_strings_to_null=request.empty_strings_to_null,
         lowercase_email_fields=request.lowercase_email_fields,
-        normalize_phone_fields=False,
-        default_phone_region="US",
+        normalize_phone_fields=request.normalize_phone_fields,
+        default_phone_region=request.default_phone_region,
+        neutralize_spreadsheet_formulas=request.neutralize_spreadsheet_formulas,
     )
-    profile = profile_frame(cleaned.fillna(""))
+    profile = profile_frame(cleaned.fillna(""), duplicate_key_summary=duplicate_summary)
     output = StringIO()
     cleaned.to_csv(output, index=False, float_format="%.4f")
     return CsvCleanResponse(
@@ -40,7 +47,7 @@ def clean_csv_request(request: CsvCleanRequest) -> CsvCleanResponse:
 
 def clean_record_request(request: RecordCleanRequest) -> RecordCleanResponse:
     frame = records_to_frame(request.records)
-    cleaned, duplicates_removed = clean_frame(
+    cleaned, duplicates_removed, duplicate_summary = clean_frame(
         frame,
         deduplicate_keys=request.deduplicate_keys,
         trim_strings=request.trim_strings,
@@ -48,9 +55,10 @@ def clean_record_request(request: RecordCleanRequest) -> RecordCleanResponse:
         lowercase_email_fields=request.lowercase_email_fields,
         normalize_phone_fields=request.normalize_phone_fields,
         default_phone_region=request.default_phone_region,
+        neutralize_spreadsheet_formulas=request.neutralize_spreadsheet_formulas,
     )
     return RecordCleanResponse(
-        profile=profile_frame(cleaned.fillna("")),
+        profile=profile_frame(cleaned.fillna(""), duplicate_key_summary=duplicate_summary),
         cleaned_records=_sample_records(cleaned, limit=len(cleaned)),
         duplicates_removed=duplicates_removed,
     )
@@ -65,7 +73,8 @@ def clean_frame(
     lowercase_email_fields: bool,
     normalize_phone_fields: bool,
     default_phone_region: str,
-) -> tuple[pd.DataFrame, int]:
+    neutralize_spreadsheet_formulas: bool,
+) -> tuple[pd.DataFrame, int, list[DuplicateKeySummary]]:
     cleaned = frame.copy()
     for column in cleaned.columns:
         cleaned[column] = cleaned[column].map(
@@ -81,13 +90,17 @@ def clean_frame(
             cleaned[column] = cleaned[column].map(
                 lambda value: _normalize_phone_value(value, default_phone_region)
             )
+        if neutralize_spreadsheet_formulas:
+            cleaned[column] = cleaned[column].map(_neutralize_formula_value)
     before = len(cleaned)
+    duplicate_summary = []
     if deduplicate_keys:
         missing = [key for key in deduplicate_keys if key not in cleaned.columns]
         if missing:
             raise ValueError(f"Cannot deduplicate; missing columns: {', '.join(missing)}")
+        duplicate_summary = summarize_duplicate_keys(cleaned, deduplicate_keys)
         cleaned = cleaned.drop_duplicates(subset=deduplicate_keys, keep="first")
-    return cleaned.reset_index(drop=True), before - len(cleaned)
+    return cleaned.reset_index(drop=True), before - len(cleaned), duplicate_summary
 
 
 def _clean_value(
@@ -118,6 +131,24 @@ def _normalize_phone_value(value: Any, default_region: str) -> Any:
         return None
     result = normalize_phone(str(value), default_region)
     return result.e164 if result.valid else value
+
+
+def _neutralize_formula_value(value: Any) -> Any:
+    if value is None or not isinstance(value, str):
+        return value
+    stripped = value.lstrip()
+    if not stripped:
+        return value
+    first = stripped[0]
+    if first in {"=", "@"}:
+        return f"'{value}"
+    if first in {"+", "-"} and not _looks_like_signed_number(stripped):
+        return f"'{value}"
+    return value
+
+
+def _looks_like_signed_number(value: str) -> bool:
+    return len(value) > 1 and value[1].isdigit()
 
 
 def _sample_records(frame: pd.DataFrame, limit: int = 10) -> list[dict[str, Any]]:

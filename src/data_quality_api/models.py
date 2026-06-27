@@ -65,6 +65,9 @@ class CsvCleanRequest(CsvProfileRequest):
     trim_strings: bool = True
     empty_strings_to_null: bool = True
     lowercase_email_fields: bool = True
+    normalize_phone_fields: bool = True
+    default_phone_region: str = Field(default="US", min_length=2, max_length=2)
+    neutralize_spreadsheet_formulas: bool = True
     deduplicate_keys: list[str] = Field(default_factory=list, max_length=10)
 
 
@@ -77,7 +80,14 @@ class RecordCleanRequest(BaseModel):
     lowercase_email_fields: bool = True
     normalize_phone_fields: bool = True
     default_phone_region: str = Field(default="US", min_length=2, max_length=2)
+    neutralize_spreadsheet_formulas: bool = True
     deduplicate_keys: list[str] = Field(default_factory=list, max_length=10)
+
+
+class DuplicateKeySummary(BaseModel):
+    keys: list[str]
+    duplicate_records: int
+    duplicate_groups: int
 
 
 class ColumnProfile(BaseModel):
@@ -95,6 +105,8 @@ class ColumnProfile(BaseModel):
     missing_count: int
     missing_rate: float
     unique_count: int
+    confidence: float
+    invalid_count: int = 0
     example_values: list[Any]
 
 
@@ -102,6 +114,9 @@ class DatasetProfile(BaseModel):
     rows: int
     columns: int
     duplicate_rows: int
+    invalid_email_count: int
+    invalid_phone_count: int
+    duplicate_key_summary: list[DuplicateKeySummary] = Field(default_factory=list)
     quality_score: float
     column_profiles: list[ColumnProfile]
     warnings: list[str]

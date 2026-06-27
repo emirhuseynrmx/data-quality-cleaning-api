@@ -52,3 +52,22 @@ def test_csv_clean_bad_deduplicate_key_returns_400() -> None:
     )
 
     assert response.status_code == 400
+
+
+def test_csv_upload_clean_endpoint() -> None:
+    response = client.post(
+        "/v1/csv/upload/clean",
+        files={
+            "file": (
+                "leads.csv",
+                b"email,phone\nALICE@Example.COM,(415) 555-0199\nalice@example.com,+14155550199\n",
+                "text/csv",
+            )
+        },
+        data={"deduplicate_keys": "email"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["duplicates_removed"] == 1
+    assert "+14155550199" in payload["cleaned_csv"]

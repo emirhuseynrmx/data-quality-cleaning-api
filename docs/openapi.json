@@ -1,8 +1,8 @@
 {
   "openapi": "3.1.0",
   "info": {
-    "title": "Data Quality Cleaning API",
-    "description": "RapidAPI-ready data hygiene API for CSV profiling, CSV cleaning, JSON record cleanup, email normalization, phone normalization, and domain parsing.",
+    "title": "CRM Lead List Cleaning API",
+    "description": "RapidAPI-ready lead-list hygiene API for CSV profiling, CSV cleaning, CSV upload cleaning, JSON record cleanup, email normalization, phone normalization, and domain parsing.",
     "version": "0.1.0"
   },
   "paths": {
@@ -218,6 +218,82 @@
         }
       }
     },
+    "/v1/csv/upload/profile": {
+      "post": {
+        "summary": "Profile Csv Upload",
+        "operationId": "profile_csv_upload_v1_csv_upload_profile_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_profile_csv_upload_v1_csv_upload_profile_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvProfileResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/csv/upload/clean": {
+      "post": {
+        "summary": "Clean Csv Upload",
+        "operationId": "clean_csv_upload_v1_csv_upload_clean_post",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_clean_csv_upload_v1_csv_upload_clean_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CsvCleanResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/records/clean": {
       "post": {
         "summary": "Clean Records",
@@ -259,6 +335,92 @@
   },
   "components": {
     "schemas": {
+      "Body_clean_csv_upload_v1_csv_upload_clean_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "trim_strings": {
+            "type": "boolean",
+            "title": "Trim Strings",
+            "default": true
+          },
+          "empty_strings_to_null": {
+            "type": "boolean",
+            "title": "Empty Strings To Null",
+            "default": true
+          },
+          "lowercase_email_fields": {
+            "type": "boolean",
+            "title": "Lowercase Email Fields",
+            "default": true
+          },
+          "normalize_phone_fields": {
+            "type": "boolean",
+            "title": "Normalize Phone Fields",
+            "default": true
+          },
+          "default_phone_region": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Default Phone Region",
+            "default": "US"
+          },
+          "neutralize_spreadsheet_formulas": {
+            "type": "boolean",
+            "title": "Neutralize Spreadsheet Formulas",
+            "default": true
+          },
+          "deduplicate_keys": {
+            "type": "string",
+            "title": "Deduplicate Keys",
+            "default": ""
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_clean_csv_upload_v1_csv_upload_clean_post"
+      },
+      "Body_profile_csv_upload_v1_csv_upload_profile_post": {
+        "properties": {
+          "file": {
+            "type": "string",
+            "contentMediaType": "application/octet-stream",
+            "title": "File"
+          },
+          "delimiter": {
+            "type": "string",
+            "maxLength": 1,
+            "minLength": 1,
+            "title": "Delimiter",
+            "default": ","
+          },
+          "sample_rows": {
+            "type": "integer",
+            "maximum": 25.0,
+            "minimum": 1.0,
+            "title": "Sample Rows",
+            "default": 5
+          }
+        },
+        "type": "object",
+        "required": [
+          "file"
+        ],
+        "title": "Body_profile_csv_upload_v1_csv_upload_profile_post"
+      },
       "ColumnProfile": {
         "properties": {
           "name": {
@@ -291,6 +453,15 @@
             "type": "integer",
             "title": "Unique Count"
           },
+          "confidence": {
+            "type": "number",
+            "title": "Confidence"
+          },
+          "invalid_count": {
+            "type": "integer",
+            "title": "Invalid Count",
+            "default": 0
+          },
           "example_values": {
             "items": {},
             "type": "array",
@@ -304,6 +475,7 @@
           "missing_count",
           "missing_rate",
           "unique_count",
+          "confidence",
           "example_values"
         ],
         "title": "ColumnProfile"
@@ -343,6 +515,23 @@
           "lowercase_email_fields": {
             "type": "boolean",
             "title": "Lowercase Email Fields",
+            "default": true
+          },
+          "normalize_phone_fields": {
+            "type": "boolean",
+            "title": "Normalize Phone Fields",
+            "default": true
+          },
+          "default_phone_region": {
+            "type": "string",
+            "maxLength": 2,
+            "minLength": 2,
+            "title": "Default Phone Region",
+            "default": "US"
+          },
+          "neutralize_spreadsheet_formulas": {
+            "type": "boolean",
+            "title": "Neutralize Spreadsheet Formulas",
             "default": true
           },
           "deduplicate_keys": {
@@ -457,6 +646,21 @@
             "type": "integer",
             "title": "Duplicate Rows"
           },
+          "invalid_email_count": {
+            "type": "integer",
+            "title": "Invalid Email Count"
+          },
+          "invalid_phone_count": {
+            "type": "integer",
+            "title": "Invalid Phone Count"
+          },
+          "duplicate_key_summary": {
+            "items": {
+              "$ref": "#/components/schemas/DuplicateKeySummary"
+            },
+            "type": "array",
+            "title": "Duplicate Key Summary"
+          },
           "quality_score": {
             "type": "number",
             "title": "Quality Score"
@@ -481,6 +685,8 @@
           "rows",
           "columns",
           "duplicate_rows",
+          "invalid_email_count",
+          "invalid_phone_count",
           "quality_score",
           "column_profiles",
           "warnings"
@@ -567,6 +773,32 @@
           "valid_shape"
         ],
         "title": "DomainParseResult"
+      },
+      "DuplicateKeySummary": {
+        "properties": {
+          "keys": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Keys"
+          },
+          "duplicate_records": {
+            "type": "integer",
+            "title": "Duplicate Records"
+          },
+          "duplicate_groups": {
+            "type": "integer",
+            "title": "Duplicate Groups"
+          }
+        },
+        "type": "object",
+        "required": [
+          "keys",
+          "duplicate_records",
+          "duplicate_groups"
+        ],
+        "title": "DuplicateKeySummary"
       },
       "EmailBatchRequest": {
         "properties": {
@@ -861,6 +1093,11 @@
             "minLength": 2,
             "title": "Default Phone Region",
             "default": "US"
+          },
+          "neutralize_spreadsheet_formulas": {
+            "type": "boolean",
+            "title": "Neutralize Spreadsheet Formulas",
+            "default": true
           },
           "deduplicate_keys": {
             "items": {
