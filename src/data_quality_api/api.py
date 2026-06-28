@@ -3,7 +3,8 @@ from __future__ import annotations
 from typing import Annotated
 
 import uvicorn
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
+from fastapi.security import APIKeyHeader
 
 from data_quality_api.cleaning import clean_csv_request, clean_record_request
 from data_quality_api.domain_tools import parse_domains
@@ -24,7 +25,15 @@ from data_quality_api.models import (
 )
 from data_quality_api.phone_tools import normalize_phone_batch
 from data_quality_api.profiling import profile_frame, read_csv_text
-from data_quality_api.settings import MAX_CSV_CHARS
+from data_quality_api.settings import MAX_CSV_CHARS, RAPIDAPI_SECRET
+
+rapidapi_header = APIKeyHeader(name="X-RapidAPI-Proxy-Secret", auto_error=False)
+
+
+async def verify_rapidapi_secret(api_key: str = Security(rapidapi_header)) -> None:
+    if RAPIDAPI_SECRET and api_key != RAPIDAPI_SECRET:
+        raise HTTPException(status_code=403, detail="Invalid RapidAPI secret")
+
 
 app = FastAPI(
     title="CRM Lead List Cleaning API",
@@ -34,6 +43,7 @@ app = FastAPI(
         "CSV upload cleaning, JSON record cleanup, email normalization, "
         "phone normalization, and domain parsing."
     ),
+    dependencies=[Depends(verify_rapidapi_secret)],
 )
 
 

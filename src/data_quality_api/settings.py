@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import os
+
 MAX_CSV_CHARS = 1_000_000
 MAX_RECORDS = 5_000
 MAX_BATCH_SIZE = 2_000
+
+RAPIDAPI_SECRET = os.environ.get("RAPIDAPI_SECRET")
 
 DISPOSABLE_DOMAINS = {
     "10minutemail.com",
