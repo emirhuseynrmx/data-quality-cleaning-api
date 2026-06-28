@@ -71,6 +71,8 @@ The report is written as Typst first, then compiled to PDF when `typst` is avail
 - `outputs/sample_report/lead_quality_report.typ`
 - `outputs/sample_report/lead_quality_report.pdf`
 
+![Sample lead quality report](docs/assets/lead-quality-report-preview.png)
+
 ## OpenAPI
 
 FastAPI exposes the schema at:
