@@ -31,13 +31,14 @@ dev = [
 
 [project.scripts]
 data-quality-api = "data_quality_api.api:main"
+generate-lead-quality-report = "data_quality_api.reporting:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=data_quality_api --cov-report=term-missing"
+addopts = "--basetemp=.pytest_tmp --cov=data_quality_api --cov-report=term-missing"
 
 [tool.ruff]
 line-length = 100

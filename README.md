@@ -58,6 +58,19 @@ Example response:
 
 [examples/records_clean_response.json](examples/records_clean_response.json)
 
+## Sample Client Report
+
+Generate a PDF report from the included messy CRM lead list:
+
+```bash
+generate-lead-quality-report data/sample_leads.csv --out outputs/sample_report
+```
+
+The report is written as Typst first, then compiled to PDF when `typst` is available:
+
+- `outputs/sample_report/lead_quality_report.typ`
+- `outputs/sample_report/lead_quality_report.pdf`
+
 ## OpenAPI
 
 FastAPI exposes the schema at:

@@ -1,0 +1,7 @@
+name,email,phone,company,source,estimated_budget,notes
+ Alice Johnson ,ALICE@Example.COM,(415) 555-0199,Acme Telecom,web form,$1200,Asked for weekly lead cleanup
+Bob Smith,bad-email,4155550188,Beta Wireless,import,800,Needs quote
+ Alice Johnson ,ALICE@Example.COM,(415) 555-0199,Acme Telecom,web form,$1200,duplicate row from export
+Nora Lee,nora@example.com,not-a-phone,Northstar Fiber,partner,1500,=IMPORTXML("http://example.com")
+Diego Martins,DIEGO@Example.com,+1 212 555 0144,MetroNet,webinar,2100,+cmd
+Sara Khan,,(312) 555-0133,CloudCell,manual,,missing email
