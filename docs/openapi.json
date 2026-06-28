@@ -28,6 +28,46 @@
         }
       }
     },
+    "/ops/audit": {
+      "get": {
+        "summary": "Audit Tail",
+        "operationId": "audit_tail_ops_audit_get",
+        "parameters": [
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "default": 25,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AuditTailResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/v1/email/normalize": {
       "post": {
         "summary": "Normalize Emails",
@@ -335,6 +375,62 @@
   },
   "components": {
     "schemas": {
+      "AuditEvent": {
+        "properties": {
+          "request_id": {
+            "type": "string",
+            "title": "Request Id"
+          },
+          "method": {
+            "type": "string",
+            "title": "Method"
+          },
+          "path": {
+            "type": "string",
+            "title": "Path"
+          },
+          "status_code": {
+            "type": "integer",
+            "title": "Status Code"
+          },
+          "duration_ms": {
+            "type": "number",
+            "title": "Duration Ms"
+          },
+          "identity_hash": {
+            "type": "string",
+            "title": "Identity Hash"
+          },
+          "idempotency_key_present": {
+            "type": "boolean",
+            "title": "Idempotency Key Present"
+          }
+        },
+        "type": "object",
+        "required": [
+          "request_id",
+          "method",
+          "path",
+          "status_code",
+          "duration_ms",
+          "identity_hash",
+          "idempotency_key_present"
+        ],
+        "title": "AuditEvent"
+      },
+      "AuditTailResponse": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/AuditEvent"
+            },
+            "type": "array",
+            "title": "Events"
+          }
+        },
+        "type": "object",
+        "title": "AuditTailResponse"
+      },
       "Body_clean_csv_upload_v1_csv_upload_clean_post": {
         "properties": {
           "file": {

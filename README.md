@@ -17,6 +17,8 @@ I built this around a common data problem: lead lists usually arrive with mixed 
 - reports missing values, duplicate counts, inferred types, and confidence
 - flags invalid email and phone values
 - neutralizes risky spreadsheet formula prefixes
+- accepts idempotency keys for repeat-safe POST requests
+- adds request IDs, rate limits, and a small audit trail
 
 ## Endpoints
 
@@ -30,6 +32,7 @@ POST /v1/csv/clean
 POST /v1/csv/upload/profile
 POST /v1/csv/upload/clean
 POST /v1/records/clean
+GET  /ops/audit
 ```
 
 ## Run Locally
@@ -92,6 +95,8 @@ python scripts/export_openapi.py
 - max CSV size: 1 MB
 - max JSON records per request: 5,000
 - max email/phone/domain batch size: 2,000
+- default rate limit: 120 requests per minute per API key or client
+- POST idempotency: send `X-Idempotency-Key` to replay the same response safely
 - supported Python versions: 3.10, 3.11, 3.12
 
 This project validates and normalizes format-level data. It does not verify whether an email inbox exists, enrich private contact data, or scrape third-party websites.

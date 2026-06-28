@@ -1,9 +1,21 @@
 from __future__ import annotations
 
+from time import monotonic
 from typing import Annotated
 
 import uvicorn
-from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
+from fastapi import (
+    Depends,
+    FastAPI,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    Security,
+    UploadFile,
+)
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 
 from data_quality_api.cleaning import clean_csv_request, clean_record_request
@@ -25,7 +37,22 @@ from data_quality_api.models import (
 )
 from data_quality_api.phone_tools import normalize_phone_batch
 from data_quality_api.profiling import profile_frame, read_csv_text
-from data_quality_api.settings import MAX_CSV_CHARS, RAPIDAPI_SECRET
+from data_quality_api.service_controls import (
+    AuditEvent,
+    AuditLog,
+    AuditTailResponse,
+    CachedResponse,
+    FixedWindowRateLimiter,
+    IdempotencyCache,
+    identity_hash,
+    new_request_id,
+)
+from data_quality_api.settings import (
+    MAX_CSV_CHARS,
+    RAPIDAPI_SECRET,
+    RATE_LIMIT_REQUESTS,
+    RATE_LIMIT_WINDOW_SECONDS,
+)
 
 rapidapi_header = APIKeyHeader(name="X-RapidAPI-Proxy-Secret", auto_error=False)
 
@@ -33,7 +60,6 @@ rapidapi_header = APIKeyHeader(name="X-RapidAPI-Proxy-Secret", auto_error=False)
 async def verify_rapidapi_secret(api_key: str = Security(rapidapi_header)) -> None:
     if RAPIDAPI_SECRET and api_key != RAPIDAPI_SECRET:
         raise HTTPException(status_code=403, detail="Invalid RapidAPI secret")
-
 
 app = FastAPI(
     title="CRM Lead List Cleaning API",
@@ -46,10 +72,79 @@ app = FastAPI(
     dependencies=[Depends(verify_rapidapi_secret)],
 )
 
+IDEMPOTENCY_CACHE = IdempotencyCache()
+RATE_LIMITER = FixedWindowRateLimiter(
+    limit=RATE_LIMIT_REQUESTS,
+    window_seconds=RATE_LIMIT_WINDOW_SECONDS,
+)
+AUDIT_LOG = AuditLog()
+
+
+@app.middleware("http")
+async def service_controls(request: Request, call_next) -> Response:
+    request_id = request.headers.get("x-request-id") or new_request_id()
+    started_at = monotonic()
+    identity = _request_identity(request)
+    allowed, retry_after = RATE_LIMITER.check(identity)
+    if not allowed:
+        response = JSONResponse(
+            status_code=429,
+            content={"detail": "Rate limit exceeded."},
+            headers={"Retry-After": str(retry_after), "X-Request-Id": request_id},
+        )
+        _record_audit(request, response.status_code, started_at, identity, request_id)
+        return response
+
+    idempotency_key = request.headers.get("x-idempotency-key")
+    cache_key = _idempotency_cache_key(request, identity, idempotency_key)
+    if cache_key is not None:
+        cached = IDEMPOTENCY_CACHE.get(cache_key)
+        if cached is not None:
+            headers = dict(cached.headers)
+            headers["X-Idempotent-Replay"] = "true"
+            headers["X-Request-Id"] = request_id
+            response = Response(
+                content=cached.body,
+                status_code=cached.status_code,
+                headers=headers,
+                media_type=cached.media_type,
+            )
+            _record_audit(request, response.status_code, started_at, identity, request_id)
+            return response
+
+    response = await call_next(request)
+    body = b""
+    async for chunk in response.body_iterator:
+        body += chunk
+    headers = dict(response.headers)
+    headers["X-Request-Id"] = request_id
+    if cache_key is not None and response.status_code < 500:
+        IDEMPOTENCY_CACHE.set(
+            cache_key,
+            CachedResponse(
+                status_code=response.status_code,
+                body=body,
+                media_type=response.media_type,
+                headers=headers,
+            ),
+        )
+    _record_audit(request, response.status_code, started_at, identity, request_id)
+    return Response(
+        content=body,
+        status_code=response.status_code,
+        headers=headers,
+        media_type=response.media_type,
+    )
+
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
+
+
+@app.get("/ops/audit", response_model=AuditTailResponse)
+def audit_tail(limit: int = 25) -> AuditTailResponse:
+    return AuditTailResponse(events=AUDIT_LOG.tail(limit=max(1, min(limit, 100))))
 
 
 @app.post("/v1/email/normalize", response_model=EmailBatchResponse)
@@ -155,3 +250,41 @@ async def _read_uploaded_csv(file: UploadFile) -> str:
 
 def _parse_deduplicate_keys(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _request_identity(request: Request) -> str:
+    api_key = request.headers.get("x-api-key")
+    if api_key:
+        return f"api-key:{api_key}"
+    client_host = request.client.host if request.client else "unknown"
+    return f"client:{client_host}"
+
+
+def _idempotency_cache_key(
+    request: Request,
+    identity: str,
+    idempotency_key: str | None,
+) -> str | None:
+    if request.method not in {"POST", "PUT", "PATCH"} or not idempotency_key:
+        return None
+    return f"{identity}:{request.method}:{request.url.path}:{idempotency_key}"
+
+
+def _record_audit(
+    request: Request,
+    status_code: int,
+    started_at: float,
+    identity: str,
+    request_id: str,
+) -> None:
+    AUDIT_LOG.add(
+        AuditEvent(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+            status_code=status_code,
+            duration_ms=round((monotonic() - started_at) * 1000, 3),
+            identity_hash=identity_hash(identity),
+            idempotency_key_present=bool(request.headers.get("x-idempotency-key")),
+        )
+    )
