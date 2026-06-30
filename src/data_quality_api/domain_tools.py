@@ -25,7 +25,8 @@ def _parse_domain(value: str) -> DomainParseResult:
         )
     if raw.startswith(("http://", "https://")):
         parsed = urlparse(raw)
-        domain = parsed.netloc.lower().removeprefix("www.")
+        # Use parsed.hostname (not netloc) so port numbers are stripped automatically
+        domain = (parsed.hostname or "").lower().removeprefix("www.")
         return DomainParseResult(
             input=value,
             domain=domain or None,

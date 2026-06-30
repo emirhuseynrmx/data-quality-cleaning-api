@@ -118,7 +118,7 @@ async def service_controls(request: Request, call_next) -> Response:
         body += chunk
     headers = dict(response.headers)
     headers["X-Request-Id"] = request_id
-    if cache_key is not None and response.status_code < 500:
+    if cache_key is not None and 200 <= response.status_code < 300:
         IDEMPOTENCY_CACHE.set(
             cache_key,
             CachedResponse(
