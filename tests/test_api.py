@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi.testclient import TestClient
+from litestar.testing import TestClient
 
 from data_quality_api.api import AUDIT_LOG, IDEMPOTENCY_CACHE, app
 from data_quality_api.service_controls import FixedWindowRateLimiter

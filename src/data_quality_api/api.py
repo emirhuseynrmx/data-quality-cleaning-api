@@ -1,22 +1,19 @@
 from __future__ import annotations
 
+import json
+from dataclasses import dataclass
 from time import monotonic
 from typing import Annotated
 
-import uvicorn
-from fastapi import (
-    Depends,
-    FastAPI,
-    File,
-    Form,
-    HTTPException,
-    Request,
-    Response,
-    Security,
-    UploadFile,
-)
-from fastapi.responses import JSONResponse
-from fastapi.security import APIKeyHeader
+from litestar import Litestar, get, post
+from litestar.connection import ASGIConnection
+from litestar.datastructures import UploadFile
+from litestar.enums import RequestEncodingType
+from litestar.exceptions import HTTPException, NotAuthorizedException
+from litestar.handlers import BaseRouteHandler
+from litestar.middleware import AbstractMiddleware
+from litestar.params import Body
+from litestar.types import Receive, Scope, Send
 
 from data_quality_api.cleaning import clean_csv_request, clean_record_request
 from data_quality_api.domain_tools import parse_domains
@@ -54,24 +51,6 @@ from data_quality_api.settings import (
     RATE_LIMIT_WINDOW_SECONDS,
 )
 
-rapidapi_header = APIKeyHeader(name="X-RapidAPI-Proxy-Secret", auto_error=False)
-
-
-async def verify_rapidapi_secret(api_key: str = Security(rapidapi_header)) -> None:
-    if RAPIDAPI_SECRET and api_key != RAPIDAPI_SECRET:
-        raise HTTPException(status_code=403, detail="Invalid RapidAPI secret")
-
-app = FastAPI(
-    title="CRM Lead List Cleaning API",
-    version="0.1.0",
-    description=(
-        "RapidAPI-ready lead-list hygiene API for CSV profiling, CSV cleaning, "
-        "CSV upload cleaning, JSON record cleanup, email normalization, "
-        "phone normalization, and domain parsing."
-    ),
-    dependencies=[Depends(verify_rapidapi_secret)],
-)
-
 IDEMPOTENCY_CACHE = IdempotencyCache()
 RATE_LIMITER = FixedWindowRateLimiter(
     limit=RATE_LIMIT_REQUESTS,
@@ -80,90 +59,131 @@ RATE_LIMITER = FixedWindowRateLimiter(
 AUDIT_LOG = AuditLog()
 
 
-@app.middleware("http")
-async def service_controls(request: Request, call_next) -> Response:
-    request_id = request.headers.get("x-request-id") or new_request_id()
-    started_at = monotonic()
-    identity = _request_identity(request)
-    allowed, retry_after = RATE_LIMITER.check(identity)
-    if not allowed:
-        response = JSONResponse(
-            status_code=429,
-            content={"detail": "Rate limit exceeded."},
-            headers={"Retry-After": str(retry_after), "X-Request-Id": request_id},
-        )
-        _record_audit(request, response.status_code, started_at, identity, request_id)
-        return response
+def _verify_rapidapi_secret(connection: ASGIConnection, _: BaseRouteHandler) -> None:
+    api_key = connection.headers.get("X-RapidAPI-Proxy-Secret")
+    if RAPIDAPI_SECRET and api_key != RAPIDAPI_SECRET:
+        raise NotAuthorizedException("Invalid RapidAPI secret")
 
-    idempotency_key = request.headers.get("x-idempotency-key")
-    cache_key = _idempotency_cache_key(request, identity, idempotency_key)
-    if cache_key is not None:
-        cached = IDEMPOTENCY_CACHE.get(cache_key)
-        if cached is not None:
-            headers = dict(cached.headers)
-            headers["X-Idempotent-Replay"] = "true"
-            headers["X-Request-Id"] = request_id
-            response = Response(
-                content=cached.body,
-                status_code=cached.status_code,
-                headers=headers,
-                media_type=cached.media_type,
+
+class ServiceControlsMiddleware(AbstractMiddleware):
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+
+        raw_headers = {k.decode().lower(): v.decode() for k, v in scope.get("headers", [])}
+        request_id = raw_headers.get("x-request-id") or new_request_id()
+        identity = _request_identity(scope, raw_headers)
+        started_at = monotonic()
+
+        allowed, retry_after = RATE_LIMITER.check(identity)
+        if not allowed:
+            body = json.dumps({"detail": "Rate limit exceeded."}).encode()
+            await send({
+                "type": "http.response.start",
+                "status": 429,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"retry-after", str(retry_after).encode()),
+                    (b"x-request-id", request_id.encode()),
+                    (b"content-length", str(len(body)).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": body, "more_body": False})
+            _record_audit(scope, 429, started_at, identity, request_id, raw_headers)
+            return
+
+        idempotency_key = raw_headers.get("x-idempotency-key")
+        method = scope.get("method", "GET")
+        path = scope.get("path", "/")
+        cache_key = _idempotency_cache_key(method, path, identity, idempotency_key)
+
+        if cache_key is not None:
+            cached = IDEMPOTENCY_CACHE.get(cache_key)
+            if cached is not None:
+                headers = dict(cached.headers)
+                headers["x-idempotent-replay"] = "true"
+                headers["x-request-id"] = request_id
+                resp_body = cached.body
+                await send({
+                    "type": "http.response.start",
+                    "status": cached.status_code,
+                    "headers": [(k.encode(), v.encode()) for k, v in headers.items()],
+                })
+                await send({"type": "http.response.body", "body": resp_body, "more_body": False})
+                _record_audit(scope, cached.status_code, started_at, identity, request_id, raw_headers)
+                return
+
+        resp_status = 200
+        resp_headers: list[tuple[bytes, bytes]] = []
+        resp_media_type = "application/json"
+        body_chunks: list[bytes] = []
+
+        async def capture_send(message: dict) -> None:
+            nonlocal resp_status, resp_headers, resp_media_type
+            if message["type"] == "http.response.start":
+                resp_status = message["status"]
+                resp_headers = list(message.get("headers", []))
+                for k, v in resp_headers:
+                    if k.lower() == b"content-type":
+                        resp_media_type = v.decode().split(";")[0].strip()
+            elif message["type"] == "http.response.body":
+                body_chunks.append(message.get("body", b""))
+
+        await self.app(scope, receive, capture_send)
+        resp_body = b"".join(body_chunks)
+
+        headers_dict = {k.decode().lower(): v.decode() for k, v in resp_headers}
+        headers_dict["x-request-id"] = request_id
+
+        if cache_key is not None and 200 <= resp_status < 300:
+            IDEMPOTENCY_CACHE.set(
+                cache_key,
+                CachedResponse(
+                    status_code=resp_status,
+                    body=resp_body,
+                    media_type=resp_media_type,
+                    headers=headers_dict,
+                ),
             )
-            _record_audit(request, response.status_code, started_at, identity, request_id)
-            return response
 
-    response = await call_next(request)
-    body = b""
-    async for chunk in response.body_iterator:
-        body += chunk
-    headers = dict(response.headers)
-    headers["X-Request-Id"] = request_id
-    if cache_key is not None and 200 <= response.status_code < 300:
-        IDEMPOTENCY_CACHE.set(
-            cache_key,
-            CachedResponse(
-                status_code=response.status_code,
-                body=body,
-                media_type=response.media_type,
-                headers=headers,
-            ),
-        )
-    _record_audit(request, response.status_code, started_at, identity, request_id)
-    return Response(
-        content=body,
-        status_code=response.status_code,
-        headers=headers,
-        media_type=response.media_type,
-    )
+        _record_audit(scope, resp_status, started_at, identity, request_id, raw_headers)
+
+        new_resp_headers = [(k.encode(), v.encode()) for k, v in headers_dict.items()]
+        await send({
+            "type": "http.response.start",
+            "status": resp_status,
+            "headers": new_resp_headers,
+        })
+        await send({"type": "http.response.body", "body": resp_body, "more_body": False})
 
 
-@app.get("/health")
+@get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.get("/ops/audit", response_model=AuditTailResponse)
+@get("/ops/audit")
 def audit_tail(limit: int = 25) -> AuditTailResponse:
     return AuditTailResponse(events=AUDIT_LOG.tail(limit=max(1, min(limit, 100))))
 
 
-@app.post("/v1/email/normalize", response_model=EmailBatchResponse)
-def normalize_emails(request: EmailBatchRequest) -> EmailBatchResponse:
-    return normalize_email_batch(request.emails)
+@post("/v1/email/normalize")
+def normalize_emails(data: EmailBatchRequest) -> EmailBatchResponse:
+    return normalize_email_batch(data.emails)
 
 
-@app.post("/v1/phone/normalize", response_model=PhoneBatchResponse)
-def normalize_phones(request: PhoneBatchRequest) -> PhoneBatchResponse:
-    return normalize_phone_batch(request.phones, request.default_region)
+@post("/v1/phone/normalize")
+def normalize_phones(data: PhoneBatchRequest) -> PhoneBatchResponse:
+    return normalize_phone_batch(data.phones, data.default_region)
 
 
-@app.post("/v1/domain/parse", response_model=DomainParseResponse)
-def parse_domain_values(request: DomainParseRequest) -> DomainParseResponse:
-    return parse_domains(request.values)
+@post("/v1/domain/parse")
+def parse_domain_values(data: DomainParseRequest) -> DomainParseResponse:
+    return parse_domains(data.values)
 
 
-@app.post("/v1/csv/profile", response_model=CsvProfileResponse)
-def profile_csv(request: CsvProfileRequest) -> CsvProfileResponse:
+def _csv_profile_logic(request: CsvProfileRequest) -> CsvProfileResponse:
     try:
         frame = read_csv_text(request.csv_text, request.delimiter)
     except Exception as error:
@@ -174,67 +194,105 @@ def profile_csv(request: CsvProfileRequest) -> CsvProfileResponse:
     )
 
 
-@app.post("/v1/csv/clean", response_model=CsvCleanResponse)
-def clean_csv(request: CsvCleanRequest) -> CsvCleanResponse:
+def _csv_clean_logic(request: CsvCleanRequest) -> CsvCleanResponse:
     try:
         return clean_csv_request(request)
     except Exception as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
-@app.post("/v1/csv/upload/profile", response_model=CsvProfileResponse)
-async def profile_csv_upload(
-    file: Annotated[UploadFile, File()],
-    delimiter: Annotated[str, Form(min_length=1, max_length=1)] = ",",
-    sample_rows: Annotated[int, Form(ge=1, le=25)] = 5,
+@post("/v1/csv/profile")
+def csv_profile(data: CsvProfileRequest) -> CsvProfileResponse:
+    return _csv_profile_logic(data)
+
+
+@post("/v1/csv/clean")
+def csv_clean(data: CsvCleanRequest) -> CsvCleanResponse:
+    return _csv_clean_logic(data)
+
+
+@dataclass
+class ProfileUploadForm:
+    file: UploadFile
+    delimiter: str = ","
+    sample_rows: int = 5
+
+
+@dataclass
+class CleanUploadForm:
+    file: UploadFile
+    delimiter: str = ","
+    trim_strings: bool = True
+    empty_strings_to_null: bool = True
+    lowercase_email_fields: bool = True
+    normalize_phone_fields: bool = True
+    default_phone_region: str = "US"
+    neutralize_spreadsheet_formulas: bool = True
+    deduplicate_keys: str = ""
+
+
+@post("/v1/csv/upload/profile")
+async def csv_upload_profile(
+    data: Annotated[ProfileUploadForm, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> CsvProfileResponse:
-    csv_text = await _read_uploaded_csv(file)
-    return profile_csv(
+    csv_text = await _read_uploaded_csv(data.file)
+    return _csv_profile_logic(
         CsvProfileRequest(
             csv_text=csv_text,
-            delimiter=delimiter,
-            sample_rows=sample_rows,
+            delimiter=data.delimiter,
+            sample_rows=data.sample_rows,
         )
     )
 
 
-@app.post("/v1/csv/upload/clean", response_model=CsvCleanResponse)
-async def clean_csv_upload(
-    file: Annotated[UploadFile, File()],
-    delimiter: Annotated[str, Form(min_length=1, max_length=1)] = ",",
-    trim_strings: Annotated[bool, Form()] = True,
-    empty_strings_to_null: Annotated[bool, Form()] = True,
-    lowercase_email_fields: Annotated[bool, Form()] = True,
-    normalize_phone_fields: Annotated[bool, Form()] = True,
-    default_phone_region: Annotated[str, Form(min_length=2, max_length=2)] = "US",
-    neutralize_spreadsheet_formulas: Annotated[bool, Form()] = True,
-    deduplicate_keys: Annotated[str, Form()] = "",
+@post("/v1/csv/upload/clean")
+async def csv_upload_clean(
+    data: Annotated[CleanUploadForm, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> CsvCleanResponse:
-    csv_text = await _read_uploaded_csv(file)
-    return clean_csv(
+    csv_text = await _read_uploaded_csv(data.file)
+    return _csv_clean_logic(
         CsvCleanRequest(
             csv_text=csv_text,
-            delimiter=delimiter,
-            trim_strings=trim_strings,
-            empty_strings_to_null=empty_strings_to_null,
-            lowercase_email_fields=lowercase_email_fields,
-            normalize_phone_fields=normalize_phone_fields,
-            default_phone_region=default_phone_region,
-            neutralize_spreadsheet_formulas=neutralize_spreadsheet_formulas,
-            deduplicate_keys=_parse_deduplicate_keys(deduplicate_keys),
+            delimiter=data.delimiter,
+            trim_strings=data.trim_strings,
+            empty_strings_to_null=data.empty_strings_to_null,
+            lowercase_email_fields=data.lowercase_email_fields,
+            normalize_phone_fields=data.normalize_phone_fields,
+            default_phone_region=data.default_phone_region,
+            neutralize_spreadsheet_formulas=data.neutralize_spreadsheet_formulas,
+            deduplicate_keys=_parse_deduplicate_keys(data.deduplicate_keys),
         )
     )
 
 
-@app.post("/v1/records/clean", response_model=RecordCleanResponse)
-def clean_records(request: RecordCleanRequest) -> RecordCleanResponse:
+@post("/v1/records/clean")
+def records_clean(data: RecordCleanRequest) -> RecordCleanResponse:
     try:
-        return clean_record_request(request)
+        return clean_record_request(data)
     except Exception as error:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
+app = Litestar(
+    route_handlers=[
+        health,
+        audit_tail,
+        normalize_emails,
+        normalize_phones,
+        parse_domain_values,
+        csv_profile,
+        csv_clean,
+        csv_upload_profile,
+        csv_upload_clean,
+        records_clean,
+    ],
+    middleware=[ServiceControlsMiddleware],
+    guards=[_verify_rapidapi_secret],
+)
+
+
 def main() -> None:
+    import uvicorn
     uvicorn.run("data_quality_api.api:app", host="0.0.0.0", port=8000, reload=False)
 
 
@@ -252,39 +310,42 @@ def _parse_deduplicate_keys(value: str) -> list[str]:
     return [item.strip() for item in value.split(",") if item.strip()]
 
 
-def _request_identity(request: Request) -> str:
-    api_key = request.headers.get("x-api-key")
+def _request_identity(scope: dict, headers: dict) -> str:
+    api_key = headers.get("x-api-key")
     if api_key:
         return f"api-key:{api_key}"
-    client_host = request.client.host if request.client else "unknown"
+    client = scope.get("client")
+    client_host = client[0] if client else "unknown"
     return f"client:{client_host}"
 
 
 def _idempotency_cache_key(
-    request: Request,
+    method: str,
+    path: str,
     identity: str,
     idempotency_key: str | None,
 ) -> str | None:
-    if request.method not in {"POST", "PUT", "PATCH"} or not idempotency_key:
+    if method not in {"POST", "PUT", "PATCH"} or not idempotency_key:
         return None
-    return f"{identity}:{request.method}:{request.url.path}:{idempotency_key}"
+    return f"{identity}:{method}:{path}:{idempotency_key}"
 
 
 def _record_audit(
-    request: Request,
+    scope: dict,
     status_code: int,
     started_at: float,
     identity: str,
     request_id: str,
+    headers: dict,
 ) -> None:
     AUDIT_LOG.add(
         AuditEvent(
             request_id=request_id,
-            method=request.method,
-            path=request.url.path,
+            method=scope.get("method", "GET"),
+            path=scope.get("path", "/"),
             status_code=status_code,
             duration_ms=round((monotonic() - started_at) * 1000, 3),
             identity_hash=identity_hash(identity),
-            idempotency_key_present=bool(request.headers.get("x-idempotency-key")),
+            idempotency_key_present=bool(headers.get("x-idempotency-key")),
         )
     )
