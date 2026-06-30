@@ -111,7 +111,9 @@ class ServiceControlsMiddleware(AbstractMiddleware):
                     "headers": [(k.encode(), v.encode()) for k, v in headers.items()],
                 })
                 await send({"type": "http.response.body", "body": resp_body, "more_body": False})
-                _record_audit(scope, cached.status_code, started_at, identity, request_id, raw_headers)
+                _record_audit(
+                    scope, cached.status_code, started_at, identity, request_id, raw_headers
+                )
                 return
 
         resp_status = 200
