@@ -170,17 +170,17 @@ def audit_tail(limit: int = 25) -> AuditTailResponse:
     return AuditTailResponse(events=AUDIT_LOG.tail(limit=max(1, min(limit, 100))))
 
 
-@post("/v1/email/normalize")
+@post("/v1/email/normalize", status_code=200)
 def normalize_emails(data: EmailBatchRequest) -> EmailBatchResponse:
     return normalize_email_batch(data.emails)
 
 
-@post("/v1/phone/normalize")
+@post("/v1/phone/normalize", status_code=200)
 def normalize_phones(data: PhoneBatchRequest) -> PhoneBatchResponse:
     return normalize_phone_batch(data.phones, data.default_region)
 
 
-@post("/v1/domain/parse")
+@post("/v1/domain/parse", status_code=200)
 def parse_domain_values(data: DomainParseRequest) -> DomainParseResponse:
     return parse_domains(data.values)
 
@@ -203,12 +203,12 @@ def _csv_clean_logic(request: CsvCleanRequest) -> CsvCleanResponse:
         raise HTTPException(status_code=400, detail=str(error)) from error
 
 
-@post("/v1/csv/profile")
+@post("/v1/csv/profile", status_code=200)
 def csv_profile(data: CsvProfileRequest) -> CsvProfileResponse:
     return _csv_profile_logic(data)
 
 
-@post("/v1/csv/clean")
+@post("/v1/csv/clean", status_code=200)
 def csv_clean(data: CsvCleanRequest) -> CsvCleanResponse:
     return _csv_clean_logic(data)
 
@@ -233,7 +233,7 @@ class CleanUploadForm:
     deduplicate_keys: str = ""
 
 
-@post("/v1/csv/upload/profile")
+@post("/v1/csv/upload/profile", status_code=200)
 async def csv_upload_profile(
     data: Annotated[ProfileUploadForm, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> CsvProfileResponse:
@@ -247,7 +247,7 @@ async def csv_upload_profile(
     )
 
 
-@post("/v1/csv/upload/clean")
+@post("/v1/csv/upload/clean", status_code=200)
 async def csv_upload_clean(
     data: Annotated[CleanUploadForm, Body(media_type=RequestEncodingType.MULTI_PART)],
 ) -> CsvCleanResponse:
@@ -267,7 +267,7 @@ async def csv_upload_clean(
     )
 
 
-@post("/v1/records/clean")
+@post("/v1/records/clean", status_code=200)
 def records_clean(data: RecordCleanRequest) -> RecordCleanResponse:
     try:
         return clean_record_request(data)
